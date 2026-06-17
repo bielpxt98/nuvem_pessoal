@@ -10,3 +10,7 @@
 - Atualizado `.gitignore` para impedir versionamento de backups, uploads e arquivos binários comuns.
 - Removidos do controle do Git os diretórios `backups/` e `uploads/`.
 - Nenhum arquivo binário de backup foi mantido neste registro.
+
+## 2026-06-17 19:10 UTC
+
+- Backup do código criado antes da alteração de senha no painel.

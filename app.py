@@ -137,6 +137,23 @@ def configured_password_hash():
     return generate_password_hash(dev_password)
 
 
+def stored_password_hash():
+    return system_get("senha_hash")
+
+
+def current_password_hash():
+    return stored_password_hash() or configured_password_hash()
+
+
+def password_matches(password):
+    password_hash = current_password_hash()
+    return bool(password_hash and check_password_hash(password_hash, password))
+
+
+def update_password(password):
+    system_set("senha_hash", generate_password_hash(password))
+
+
 def parse_date(value):
     if not value:
         return None
@@ -342,7 +359,7 @@ def login():
     if request.method == "POST":
         usuario = request.form.get("usuario", "").strip()
         senha = request.form.get("senha", "")
-        if usuario == configured_user() and check_password_hash(configured_password_hash(), senha):
+        if usuario == configured_user() and password_matches(senha):
             session.clear()
             session["usuario"] = usuario
             return redirect(url_for("gallery_all"))
@@ -470,6 +487,31 @@ def download(file_id):
 def settings():
     backups = sorted(BACKUP_DIR.glob("*.zip"), key=lambda p: p.stat().st_mtime, reverse=True)
     return render_template("settings.html", titulo="Configurações", status=backup_status(), backups=backups)
+
+
+@app.post("/configuracoes/alterar-senha")
+@login_required
+def change_password():
+    current_password = request.form.get("senha_atual", "")
+    new_password = request.form.get("nova_senha", "")
+    confirmation = request.form.get("confirmar_nova_senha", "")
+
+    if not password_matches(current_password):
+        flash("Senha atual incorreta.", "erro")
+        return redirect(url_for("settings"))
+    if not new_password:
+        flash("Informe a nova senha.", "erro")
+        return redirect(url_for("settings"))
+    if len(new_password) < 8:
+        flash("A nova senha deve ter pelo menos 8 caracteres.", "erro")
+        return redirect(url_for("settings"))
+    if new_password != confirmation:
+        flash("A confirmação da nova senha não confere.", "erro")
+        return redirect(url_for("settings"))
+
+    update_password(new_password)
+    flash("Senha alterada com sucesso. Você continua logado e deve usar a nova senha no próximo acesso.", "ok")
+    return redirect(url_for("settings"))
 
 
 @app.get("/exportar")

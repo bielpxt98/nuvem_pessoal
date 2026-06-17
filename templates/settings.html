@@ -1,14 +1,40 @@
 {% extends 'base.html' %}
 {% block content %}
-<header class="topbar">
-  <div><p class="eyebrow">CONFIGURAÇÕES</p><h1>Backup da nuvem</h1></div>
+<header class="topbar settings-hero">
+  <div>
+    <p class="eyebrow">CONFIGURAÇÕES</p>
+    <h1>Painel de controle</h1>
+    <p class="muted">Gerencie segurança, backups e importação da sua nuvem pessoal em um só lugar.</p>
+  </div>
   <div class="top-actions"><a class="secondary linkbtn" href="{{ url_for('gallery_all') }}">Voltar</a><form method="post" action="{{ url_for('logout') }}"><button class="secondary">Sair</button></form></div>
 </header>
 
-<section class="settings-grid">
-  <article class="settings-card">
-    <p class="eyebrow">Último backup realizado</p>
-    <h2>{{ status.ultimo_backup }}</h2>
+<section class="settings-grid settings-grid-featured">
+  <article class="settings-card security-card">
+    <div class="settings-card-header">
+      <span class="settings-icon">🔐</span>
+      <div>
+        <p class="eyebrow">ALTERAR SENHA</p>
+        <h2>Atualize seu acesso</h2>
+      </div>
+    </div>
+    <p class="muted">A nova senha será salva com hash seguro no armazenamento persistente e usada nos próximos logins.</p>
+    <form class="form password-form" method="post" action="{{ url_for('change_password') }}">
+      <label>Senha atual<input name="senha_atual" type="password" autocomplete="current-password" required></label>
+      <label>Nova senha<input name="nova_senha" type="password" autocomplete="new-password" minlength="8" required></label>
+      <label>Confirmar nova senha<input name="confirmar_nova_senha" type="password" autocomplete="new-password" minlength="8" required></label>
+      <button type="submit">SALVAR NOVA SENHA</button>
+    </form>
+  </article>
+
+  <article class="settings-card status-card">
+    <div class="settings-card-header">
+      <span class="settings-icon">☁️</span>
+      <div>
+        <p class="eyebrow">Último backup realizado</p>
+        <h2>{{ status.ultimo_backup }}</h2>
+      </div>
+    </div>
     {% if status.arquivo %}<p class="muted">Arquivo: {{ status.arquivo }}</p>{% endif %}
     <div class="settings-actions">
       <form method="post" action="{{ url_for('backup_now') }}"><button>FAZER BACKUP AGORA</button></form>
@@ -17,13 +43,25 @@
   </article>
 
   <article class="settings-card">
-    <p class="eyebrow">EXPORTAR NUVEM</p>
+    <div class="settings-card-header">
+      <span class="settings-icon">📦</span>
+      <div>
+        <p class="eyebrow">EXPORTAR NUVEM</p>
+        <h2>Pacote completo</h2>
+      </div>
+    </div>
     <p class="muted">Gera um ZIP único com fotos, vídeos, banco de dados e metadados para restaurar em outra instalação.</p>
     <a class="linkbtn" href="{{ url_for('export_cloud') }}">EXPORTAR NUVEM</a>
   </article>
 
   <article class="settings-card">
-    <p class="eyebrow">IMPORTAR NUVEM</p>
+    <div class="settings-card-header">
+      <span class="settings-icon">⬆️</span>
+      <div>
+        <p class="eyebrow">IMPORTAR NUVEM</p>
+        <h2>Restaurar dados</h2>
+      </div>
+    </div>
     <p class="muted">Restaura um ZIP exportado. Um backup de segurança da instalação atual é criado antes da importação.</p>
     <form class="form" method="post" action="{{ url_for('import_cloud') }}" enctype="multipart/form-data" onsubmit="return confirm('Importar este ZIP vai substituir os arquivos e o banco atuais. Continuar?')">
       <label>Arquivo ZIP<input type="file" name="backup" accept=".zip,application/zip" required></label>
@@ -32,7 +70,13 @@
   </article>
 
   <article class="settings-card backups-list">
-    <p class="eyebrow">BACKUPS</p>
+    <div class="settings-card-header">
+      <span class="settings-icon">🗂️</span>
+      <div>
+        <p class="eyebrow">BACKUPS</p>
+        <h2>Histórico local</h2>
+      </div>
+    </div>
     {% if backups %}
       <ul>
         {% for backup in backups %}<li>{{ backup.name }}</li>{% endfor %}
