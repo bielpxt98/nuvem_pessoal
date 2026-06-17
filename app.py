@@ -1,11 +1,14 @@
+import json
 import os
+import shutil
 import sqlite3
 import uuid
+import zipfile
 from datetime import datetime, date, timedelta
 from functools import wraps
 from pathlib import Path
 
-from flask import Flask, abort, flash, g, redirect, render_template, request, send_from_directory, session, url_for
+from flask import Flask, abort, flash, g, redirect, render_template, request, send_file, send_from_directory, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 
@@ -15,6 +18,8 @@ UPLOAD_ROOT = BASE_DIR / "uploads"
 PHOTO_DIR = UPLOAD_ROOT / "fotos"
 VIDEO_DIR = UPLOAD_ROOT / "videos"
 THUMB_DIR = UPLOAD_ROOT / "thumbs"
+BACKUP_DIR = BASE_DIR / "backups"
+RESTORE_TMP_DIR = BASE_DIR / ".restore_tmp"
 ALLOWED_PHOTOS = {"jpg", "jpeg", "png", "gif", "webp", "heic", "heif"}
 ALLOWED_VIDEOS = {"mp4", "mov", "webm", "avi", "mkv", "m4v"}
 
@@ -23,7 +28,7 @@ app.secret_key = os.environ.get("SECRET_KEY", "dev-only-change-me")
 
 
 def ensure_storage():
-    for folder in (PHOTO_DIR, VIDEO_DIR, THUMB_DIR):
+    for folder in (PHOTO_DIR, VIDEO_DIR, THUMB_DIR, BACKUP_DIR):
         folder.mkdir(parents=True, exist_ok=True)
     with sqlite3.connect(DB_PATH) as conn:
         conn.execute(
@@ -35,6 +40,14 @@ def ensure_storage():
                 tipo TEXT NOT NULL CHECK(tipo IN ('foto', 'video')),
                 data_upload TEXT NOT NULL,
                 usuario TEXT NOT NULL
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS sistema (
+                chave TEXT PRIMARY KEY,
+                valor TEXT NOT NULL
             )
             """
         )
@@ -118,6 +131,105 @@ def list_files(kind="todas", day=None):
     return grouped
 
 
+def system_get(key, default=None):
+    row = get_db().execute("SELECT valor FROM sistema WHERE chave = ?", (key,)).fetchone()
+    return row["valor"] if row else default
+
+
+def system_set(key, value):
+    get_db().execute(
+        "INSERT INTO sistema (chave, valor) VALUES (?, ?) ON CONFLICT(chave) DO UPDATE SET valor = excluded.valor",
+        (key, value),
+    )
+    get_db().commit()
+
+
+def backup_status():
+    last = system_get("ultimo_backup")
+    return {"ultimo_backup": last.replace("T", " ") if last else "Nunca", "arquivo": system_get("ultimo_backup_arquivo")}
+
+
+def add_path_to_zip(zipf, path, arcname):
+    if path.is_file():
+        zipf.write(path, arcname.as_posix())
+    elif path.is_dir():
+        zipf.writestr(f"{arcname.as_posix().rstrip('/')}/", "")
+        for item in path.rglob("*"):
+            relative_name = item.relative_to(BASE_DIR).as_posix()
+            if item.is_dir():
+                zipf.writestr(f"{relative_name.rstrip('/')}/", "")
+            elif item.is_file():
+                zipf.write(item, relative_name)
+
+
+def create_cloud_export(prefix="backup"):
+    BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    zip_path = BACKUP_DIR / f"{prefix}-{stamp}.zip"
+    manifest = {
+        "app": "nuvem_pessoal",
+        "criado_em": datetime.now().isoformat(timespec="seconds"),
+        "inclui": ["fotos", "videos", "banco de dados", "metadados"],
+        "versao_exportacao": 1,
+    }
+    with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zipf:
+        add_path_to_zip(zipf, PHOTO_DIR, Path("uploads/fotos"))
+        add_path_to_zip(zipf, VIDEO_DIR, Path("uploads/videos"))
+        add_path_to_zip(zipf, THUMB_DIR, Path("uploads/thumbs"))
+        if DB_PATH.exists():
+            zipf.write(DB_PATH, "nuvem.db")
+        zipf.writestr("metadata/manifest.json", json.dumps(manifest, ensure_ascii=False, indent=2))
+    system_set("ultimo_backup", manifest["criado_em"])
+    system_set("ultimo_backup_arquivo", zip_path.name)
+    return zip_path
+
+
+def maybe_run_daily_backup():
+    ensure_storage()
+    last = system_get("ultimo_backup")
+    if not last or datetime.fromisoformat(last).date() < date.today():
+        create_cloud_export("backup-diario")
+
+
+def latest_backup_file():
+    saved = system_get("ultimo_backup_arquivo")
+    if saved and (BACKUP_DIR / saved).exists():
+        return BACKUP_DIR / saved
+    backups = sorted(BACKUP_DIR.glob("*.zip"), key=lambda p: p.stat().st_mtime, reverse=True)
+    return backups[0] if backups else None
+
+
+def safe_extract(zip_path, target):
+    with zipfile.ZipFile(zip_path) as zipf:
+        for member in zipf.infolist():
+            destination = (target / member.filename).resolve()
+            if not str(destination).startswith(str(target.resolve())):
+                raise ValueError("ZIP inválido: caminho inseguro.")
+        zipf.extractall(target)
+
+
+def restore_cloud_export(zip_path):
+    if RESTORE_TMP_DIR.exists():
+        shutil.rmtree(RESTORE_TMP_DIR)
+    RESTORE_TMP_DIR.mkdir(parents=True)
+    safe_extract(zip_path, RESTORE_TMP_DIR)
+    restored_db = RESTORE_TMP_DIR / "nuvem.db"
+    restored_uploads = RESTORE_TMP_DIR / "uploads"
+    if not restored_db.exists() or not restored_uploads.exists():
+        raise ValueError("ZIP inválido: exportação deve conter nuvem.db e uploads/.")
+    safety = create_cloud_export("antes-da-importacao")
+    db = g.pop("db", None)
+    if db is not None:
+        db.close()
+    if UPLOAD_ROOT.exists():
+        shutil.rmtree(UPLOAD_ROOT)
+    shutil.copytree(restored_uploads, UPLOAD_ROOT)
+    shutil.copy2(restored_db, DB_PATH)
+    shutil.rmtree(RESTORE_TMP_DIR)
+    ensure_storage()
+    return safety
+
+
 def media_type(filename):
     ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
     if ext in ALLOWED_PHOTOS:
@@ -125,6 +237,12 @@ def media_type(filename):
     if ext in ALLOWED_VIDEOS:
         return "video"
     return None
+
+
+@app.before_request
+def automatic_daily_backup():
+    if request.endpoint not in {"static", "media", "download", "download_backup"}:
+        maybe_run_daily_backup()
 
 
 @app.route("/")
@@ -242,6 +360,62 @@ def download(file_id):
         abort(404)
     path = BASE_DIR / row["caminho"]
     return send_from_directory(path.parent, path.name, as_attachment=True, download_name=row["nome_arquivo"])
+
+
+@app.route("/configuracoes")
+@login_required
+def settings():
+    backups = sorted(BACKUP_DIR.glob("*.zip"), key=lambda p: p.stat().st_mtime, reverse=True)
+    return render_template("settings.html", titulo="Configurações", status=backup_status(), backups=backups)
+
+
+@app.get("/exportar")
+@login_required
+def export_cloud():
+    path = create_cloud_export("exportacao-nuvem")
+    flash("Exportação completa criada com sucesso.", "ok")
+    return send_file(path, as_attachment=True, download_name=path.name)
+
+
+@app.post("/importar")
+@login_required
+def import_cloud():
+    file = request.files.get("backup")
+    if not file or not file.filename:
+        flash("Selecione um arquivo ZIP de exportação.", "erro")
+        return redirect(url_for("settings"))
+    if not file.filename.lower().endswith(".zip"):
+        flash("Envie um arquivo .zip válido.", "erro")
+        return redirect(url_for("settings"))
+    temp = BACKUP_DIR / f"importacao-{uuid.uuid4().hex}.zip"
+    file.save(temp)
+    try:
+        safety = restore_cloud_export(temp)
+        flash(f"Nuvem importada com sucesso. Backup de segurança salvo em {safety.name}.", "ok")
+    except Exception as exc:
+        flash(str(exc), "erro")
+    finally:
+        if temp.exists():
+            temp.unlink()
+    return redirect(url_for("settings"))
+
+
+@app.post("/backup-agora")
+@login_required
+def backup_now():
+    path = create_cloud_export("backup-manual")
+    flash(f"Backup criado: {path.name}", "ok")
+    return redirect(url_for("settings"))
+
+
+@app.get("/backup/baixar")
+@login_required
+def download_backup():
+    path = latest_backup_file()
+    if not path:
+        flash("Nenhum backup disponível para baixar.", "erro")
+        return redirect(url_for("settings"))
+    return send_file(path, as_attachment=True, download_name=path.name)
 
 
 @app.post("/excluir/<int:file_id>")

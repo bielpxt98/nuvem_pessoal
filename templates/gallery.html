@@ -11,6 +11,7 @@
   <a href="{{ url_for('gallery_all', filtro='foto') }}">Fotos</a>
   <a href="{{ url_for('gallery_all', filtro='video') }}">Vídeos</a>
   <a class="primary" href="{{ url_for('upload') }}">Enviar foto/vídeo</a>
+  <a href="{{ url_for('settings') }}">Configurações</a>
 </nav>
 <form class="search" action="{{ url_for('search') }}">
   <input name="data" value="{{ data_pesquisa }}" placeholder="Pesquisar data: 10/06/2026 ou 10-06-2026">
