@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{% block content %}
+<header class="topbar"><div><p class="eyebrow">Upload seguro</p><h1>Enviar fotos e vídeos</h1></div><a class="secondary linkbtn" href="{{ url_for('gallery_all') }}">Voltar</a></header>
+<section class="upload-panel">
+  <form method="post" enctype="multipart/form-data" class="form">
+    <label>Escolher da galeria<input type="file" name="arquivo" accept="image/*,video/*" multiple required></label>
+    <button>Enviar foto/vídeo</button>
+  </form>
+  <form method="post" enctype="multipart/form-data" class="form camera">
+    <label>Tirar foto pelo celular<input type="file" name="arquivo" accept="image/*" capture="environment" required></label>
+    <button>Tirar foto e enviar</button>
+  </form>
+</section>
+{% endblock %}

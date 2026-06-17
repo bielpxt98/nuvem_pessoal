@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block content %}
+<header class="topbar">
+  <div><p class="eyebrow">Sua nuvem pessoal</p><h1>{{ titulo }}</h1></div>
+  <form method="post" action="{{ url_for('logout') }}"><button class="secondary">Sair</button></form>
+</header>
+<nav class="actions">
+  <a href="{{ url_for('gallery_all') }}">Todas</a>
+  <a href="{{ url_for('gallery_today') }}">Hoje</a>
+  <a href="{{ url_for('gallery_yesterday') }}">Ontem</a>
+  <a href="{{ url_for('gallery_all', filtro='foto') }}">Fotos</a>
+  <a href="{{ url_for('gallery_all', filtro='video') }}">Vídeos</a>
+  <a class="primary" href="{{ url_for('upload') }}">Enviar foto/vídeo</a>
+</nav>
+<form class="search" action="{{ url_for('search') }}">
+  <input name="data" value="{{ data_pesquisa }}" placeholder="Pesquisar data: 10/06/2026 ou 10-06-2026">
+  <button>Pesquisar</button>
+</form>
+{% if not grupos %}<p class="empty">Nenhum arquivo encontrado.</p>{% endif %}
+{% for data, arquivos in grupos.items() %}
+  <section class="day"><h2>{{ data }}</h2><div class="grid">
+  {% for item in arquivos %}
+    <article class="card">
+      <a href="{{ url_for('media', file_id=item.id) }}" target="_blank" class="preview">
+        {% if item.tipo == 'foto' %}<img src="{{ url_for('media', file_id=item.id) }}" alt="{{ item.nome_arquivo }}">{% else %}<video src="{{ url_for('media', file_id=item.id) }}" controls preload="metadata"></video>{% endif %}
+      </a>
+      <div class="card-body"><strong>{{ item.tipo|capitalize }}</strong><small>{{ item.data_upload.replace('T', ' ') }}</small></div>
+      <div class="card-actions"><a href="{{ url_for('download', file_id=item.id) }}">Baixar</a><form method="post" action="{{ url_for('delete', file_id=item.id) }}" onsubmit="return confirm('Excluir este arquivo?')"><button class="danger">Excluir</button></form></div>
+    </article>
+  {% endfor %}
+  </div></section>
+{% endfor %}
+{% endblock %}
