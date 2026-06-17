@@ -1,0 +1,11 @@
+{
+  "name": "nuvem-pessoal",
+  "version": "1.0.0",
+  "description": "Organizador de fotos e vídeos por data para uma nuvem pessoal.",
+  "type": "module",
+  "scripts": {
+    "test": "node --test"
+  },
+  "keywords": ["fotos", "videos", "galeria", "organizacao"],
+  "license": "MIT"
+}

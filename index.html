@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Nuvem Pessoal</title>
+    <link rel="stylesheet" href="src/styles.css" />
+  </head>
+  <body>
+    <aside class="sidebar" aria-label="Filtros da galeria">
+      <div class="brand">
+        <span class="brand-icon">☁️</span>
+        <div>
+          <strong>Nuvem Pessoal</strong>
+          <small>Fotos e vídeos</small>
+        </div>
+      </div>
+
+      <nav class="menu" aria-label="Menu lateral">
+        <button class="menu-item active" data-filter="all">Todas as fotos</button>
+        <button class="menu-item" data-filter="today">Hoje</button>
+        <button class="menu-item" data-filter="yesterday">Ontem</button>
+        <button class="menu-item" data-filter="month">Este mês</button>
+        <button class="menu-item" data-filter="photos">Fotos</button>
+        <button class="menu-item" data-filter="videos">Vídeos</button>
+      </nav>
+    </aside>
+
+    <main class="content">
+      <section class="hero">
+        <div>
+          <p class="eyebrow">Organização automática por ANO › MÊS › DIA</p>
+          <h1>Galeria organizada por data</h1>
+          <p>Use o menu, clique em uma data ou pesquise formatos como 10/06/2026, 10-06-2026 e 10/06.</p>
+        </div>
+        <label class="search-box">
+          <span>Pesquisar por data</span>
+          <input id="date-search" type="search" placeholder="Ex.: 10/06/2026, 10-06-2026, 10/06" autocomplete="off" />
+        </label>
+      </section>
+
+      <section class="summary" id="summary" aria-live="polite"></section>
+      <section class="date-groups" id="date-groups" aria-label="Agrupamento por data"></section>
+      <section class="gallery" id="gallery" aria-label="Arquivos encontrados"></section>
+    </main>
+
+    <script type="module" src="src/app.js"></script>
+  </body>
+</html>
