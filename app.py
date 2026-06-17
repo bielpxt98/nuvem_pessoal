@@ -13,13 +13,14 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 
 BASE_DIR = Path(__file__).resolve().parent
-DB_PATH = BASE_DIR / "nuvem.db"
-UPLOAD_ROOT = BASE_DIR / "uploads"
+DATA_DIR = Path(os.environ.get("DATA_DIR", BASE_DIR)).resolve()
+DB_PATH = DATA_DIR / "nuvem.db"
+UPLOAD_ROOT = DATA_DIR / "uploads"
 PHOTO_DIR = UPLOAD_ROOT / "fotos"
 VIDEO_DIR = UPLOAD_ROOT / "videos"
 THUMB_DIR = UPLOAD_ROOT / "thumbs"
-BACKUP_DIR = BASE_DIR / "backups"
-RESTORE_TMP_DIR = BASE_DIR / ".restore_tmp"
+BACKUP_DIR = DATA_DIR / "backups"
+RESTORE_TMP_DIR = DATA_DIR / ".restore_tmp"
 ALLOWED_PHOTOS = {"jpg", "jpeg", "png", "gif", "webp", "heic", "heif"}
 ALLOWED_VIDEOS = {"mp4", "mov", "webm", "avi", "mkv", "m4v"}
 
@@ -155,7 +156,7 @@ def add_path_to_zip(zipf, path, arcname):
     elif path.is_dir():
         zipf.writestr(f"{arcname.as_posix().rstrip('/')}/", "")
         for item in path.rglob("*"):
-            relative_name = item.relative_to(BASE_DIR).as_posix()
+            relative_name = item.relative_to(DATA_DIR).as_posix()
             if item.is_dir():
                 zipf.writestr(f"{relative_name.rstrip('/')}/", "")
             elif item.is_file():
@@ -330,7 +331,7 @@ def upload():
             folder = PHOTO_DIR if kind == "foto" else VIDEO_DIR
             path = folder / unique_name
             file.save(path)
-            rel_path = path.relative_to(BASE_DIR).as_posix()
+            rel_path = path.relative_to(DATA_DIR).as_posix()
             get_db().execute(
                 "INSERT INTO arquivos (nome_arquivo, caminho, tipo, data_upload, usuario) VALUES (?, ?, ?, ?, ?)",
                 (unique_name, rel_path, kind, datetime.now().isoformat(timespec="seconds"), session["usuario"]),
@@ -348,7 +349,7 @@ def media(file_id):
     row = get_db().execute("SELECT * FROM arquivos WHERE id = ? AND usuario = ?", (file_id, session["usuario"])).fetchone()
     if not row:
         abort(404)
-    path = BASE_DIR / row["caminho"]
+    path = DATA_DIR / row["caminho"]
     return send_from_directory(path.parent, path.name)
 
 
@@ -358,7 +359,7 @@ def download(file_id):
     row = get_db().execute("SELECT * FROM arquivos WHERE id = ? AND usuario = ?", (file_id, session["usuario"])).fetchone()
     if not row:
         abort(404)
-    path = BASE_DIR / row["caminho"]
+    path = DATA_DIR / row["caminho"]
     return send_from_directory(path.parent, path.name, as_attachment=True, download_name=row["nome_arquivo"])
 
 
@@ -424,7 +425,7 @@ def delete(file_id):
     row = get_db().execute("SELECT * FROM arquivos WHERE id = ? AND usuario = ?", (file_id, session["usuario"])).fetchone()
     if not row:
         abort(404)
-    path = BASE_DIR / row["caminho"]
+    path = DATA_DIR / row["caminho"]
     if path.exists():
         path.unlink()
     get_db().execute("DELETE FROM arquivos WHERE id = ? AND usuario = ?", (file_id, session["usuario"]))

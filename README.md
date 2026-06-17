@@ -83,3 +83,22 @@ Esse ZIP pode ser guardado fora do Render ou em outro provedor de armazenamento.
 5. A importação substitui `uploads/` e `nuvem.db` pelos dados do ZIP. Antes disso, a instalação atual gera um backup de segurança em `backups/antes-da-importacao-AAAAmmdd-HHMMSS.zip`.
 
 > Importante: mantenha cópias dos ZIPs fora do servidor para proteção contra exclusão do disco persistente ou troca de hospedagem.
+
+## Deploy no Render
+
+Este repositório inclui um `render.yaml` para criar o serviço web no Render como Blueprint.
+
+Configurações principais do Blueprint:
+
+- Runtime Python.
+- Build command: `pip install -r requirements.txt`.
+- Start command: `gunicorn app:app --bind 0.0.0.0:$PORT`.
+- Disco persistente montado em `/var/data` para manter `nuvem.db`, `uploads/` e `backups/` entre deploys.
+- Variável `DATA_DIR=/var/data` para apontar a aplicação para o disco persistente.
+
+Credenciais iniciais configuradas no Blueprint:
+
+- Usuário: `admin`
+- Senha: `ui1L7iN4V7o6w4gz`
+
+> Recomendação: depois do primeiro acesso, gere uma nova senha, atualize `NUVEM_SENHA_HASH` no Render e faça redeploy.

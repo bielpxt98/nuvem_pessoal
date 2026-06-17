@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: nuvem-pessoal
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATA_DIR
+        value: /var/data
+      - key: NUVEM_USUARIO
+        value: admin
+      - key: NUVEM_SENHA_HASH
+        value: scrypt:32768:8:1$slHm2hYS2TfVP3mA$e5b7640569d156181f41fe228e186dba0a4ab408fbadbdb5c8a1c515f6646cec379c9ea0917cd7e0c205a86616ea5dee11a98fec07d316151669b9f9e5bb9031
+    disk:
+      name: nuvem-pessoal-data
+      mountPath: /var/data
+      sizeGB: 1
