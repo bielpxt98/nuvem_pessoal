@@ -1,5 +1,6 @@
 import json
 import os
+import importlib
 import shutil
 import sqlite3
 import uuid
@@ -28,6 +29,33 @@ app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev-only-change-me")
 
 
+def cloudinary_configured():
+    return all(
+        os.environ.get(key)
+        for key in ("CLOUDINARY_CLOUD_NAME", "CLOUDINARY_API_KEY", "CLOUDINARY_API_SECRET")
+    )
+
+
+def cloudinary_modules():
+    cloudinary = importlib.import_module("cloudinary")
+    uploader = importlib.import_module("cloudinary.uploader")
+    return cloudinary, uploader
+
+
+def configure_cloudinary():
+    if cloudinary_configured():
+        cloudinary, _uploader = cloudinary_modules()
+        cloudinary.config(
+            cloud_name=os.environ["CLOUDINARY_CLOUD_NAME"],
+            api_key=os.environ["CLOUDINARY_API_KEY"],
+            api_secret=os.environ["CLOUDINARY_API_SECRET"],
+            secure=True,
+        )
+
+
+configure_cloudinary()
+
+
 def ensure_storage():
     for folder in (PHOTO_DIR, VIDEO_DIR, THUMB_DIR, BACKUP_DIR):
         folder.mkdir(parents=True, exist_ok=True)
@@ -40,10 +68,26 @@ def ensure_storage():
                 caminho TEXT NOT NULL,
                 tipo TEXT NOT NULL CHECK(tipo IN ('foto', 'video')),
                 data_upload TEXT NOT NULL,
-                usuario TEXT NOT NULL
+                usuario TEXT NOT NULL,
+                url TEXT,
+                public_id TEXT,
+                storage TEXT NOT NULL DEFAULT 'local',
+                bytes INTEGER,
+                formato TEXT
             )
             """
         )
+        existing_columns = {row[1] for row in conn.execute("PRAGMA table_info(arquivos)")}
+        migrations = {
+            "url": "ALTER TABLE arquivos ADD COLUMN url TEXT",
+            "public_id": "ALTER TABLE arquivos ADD COLUMN public_id TEXT",
+            "storage": "ALTER TABLE arquivos ADD COLUMN storage TEXT NOT NULL DEFAULT 'local'",
+            "bytes": "ALTER TABLE arquivos ADD COLUMN bytes INTEGER",
+            "formato": "ALTER TABLE arquivos ADD COLUMN formato TEXT",
+        }
+        for column, statement in migrations.items():
+            if column not in existing_columns:
+                conn.execute(statement)
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS sistema (
@@ -127,8 +171,11 @@ def list_files(kind="todas", day=None):
     ).fetchall()
     grouped = {}
     for row in rows:
-        label = datetime.fromisoformat(row["data_upload"]).strftime("%d/%m/%Y")
-        grouped.setdefault(label, []).append(row)
+        item = dict(row)
+        item["media_url"] = item.get("url") or url_for("media", file_id=item["id"])
+        item["download_url"] = item.get("url") or url_for("download", file_id=item["id"])
+        label = datetime.fromisoformat(item["data_upload"]).strftime("%d/%m/%Y")
+        grouped.setdefault(label, []).append(item)
     return grouped
 
 
@@ -240,6 +287,43 @@ def media_type(filename):
     return None
 
 
+def upload_to_cloudinary(file, unique_name, kind):
+    resource_type = "image" if kind == "foto" else "video"
+    public_id = f"nuvem_pessoal/{kind}s/{Path(unique_name).stem}"
+    _cloudinary, uploader = cloudinary_modules()
+    result = uploader.upload(
+        file,
+        public_id=public_id,
+        resource_type=resource_type,
+        overwrite=False,
+    )
+    return {
+        "url": result.get("secure_url") or result.get("url"),
+        "public_id": result.get("public_id"),
+        "bytes": result.get("bytes"),
+        "formato": result.get("format"),
+    }
+
+
+def save_upload(file, unique_name, kind):
+    if cloudinary_configured():
+        metadata = upload_to_cloudinary(file, unique_name, kind)
+        metadata["storage"] = "cloudinary"
+        metadata["caminho"] = metadata["url"]
+        return metadata
+    folder = PHOTO_DIR if kind == "foto" else VIDEO_DIR
+    path = folder / unique_name
+    file.save(path)
+    return {
+        "storage": "local",
+        "caminho": path.relative_to(DATA_DIR).as_posix(),
+        "url": None,
+        "public_id": None,
+        "bytes": path.stat().st_size,
+        "formato": unique_name.rsplit(".", 1)[-1].lower(),
+    }
+
+
 @app.before_request
 def automatic_daily_backup():
     if request.endpoint not in {"static", "media", "download", "download_backup"}:
@@ -328,13 +412,25 @@ def upload():
                 continue
             ext = safe.rsplit(".", 1)[-1].lower()
             unique_name = f"{datetime.utcnow().strftime('%Y%m%d%H%M%S')}-{uuid.uuid4().hex}.{ext}"
-            folder = PHOTO_DIR if kind == "foto" else VIDEO_DIR
-            path = folder / unique_name
-            file.save(path)
-            rel_path = path.relative_to(DATA_DIR).as_posix()
+            metadata = save_upload(file, unique_name, kind)
             get_db().execute(
-                "INSERT INTO arquivos (nome_arquivo, caminho, tipo, data_upload, usuario) VALUES (?, ?, ?, ?, ?)",
-                (unique_name, rel_path, kind, datetime.now().isoformat(timespec="seconds"), session["usuario"]),
+                """
+                INSERT INTO arquivos
+                    (nome_arquivo, caminho, tipo, data_upload, usuario, url, public_id, storage, bytes, formato)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    unique_name,
+                    metadata["caminho"],
+                    kind,
+                    datetime.now().isoformat(timespec="seconds"),
+                    session["usuario"],
+                    metadata["url"],
+                    metadata["public_id"],
+                    metadata["storage"],
+                    metadata["bytes"],
+                    metadata["formato"],
+                ),
             )
             saved += 1
         get_db().commit()
@@ -349,6 +445,8 @@ def media(file_id):
     row = get_db().execute("SELECT * FROM arquivos WHERE id = ? AND usuario = ?", (file_id, session["usuario"])).fetchone()
     if not row:
         abort(404)
+    if row["url"]:
+        return redirect(row["url"])
     path = DATA_DIR / row["caminho"]
     return send_from_directory(path.parent, path.name)
 
@@ -359,6 +457,8 @@ def download(file_id):
     row = get_db().execute("SELECT * FROM arquivos WHERE id = ? AND usuario = ?", (file_id, session["usuario"])).fetchone()
     if not row:
         abort(404)
+    if row["url"]:
+        return redirect(row["url"])
     path = DATA_DIR / row["caminho"]
     return send_from_directory(path.parent, path.name, as_attachment=True, download_name=row["nome_arquivo"])
 
@@ -425,9 +525,14 @@ def delete(file_id):
     row = get_db().execute("SELECT * FROM arquivos WHERE id = ? AND usuario = ?", (file_id, session["usuario"])).fetchone()
     if not row:
         abort(404)
-    path = DATA_DIR / row["caminho"]
-    if path.exists():
-        path.unlink()
+    if row["storage"] == "cloudinary" and row["public_id"] and cloudinary_configured():
+        resource_type = "image" if row["tipo"] == "foto" else "video"
+        _cloudinary, uploader = cloudinary_modules()
+        uploader.destroy(row["public_id"], resource_type=resource_type)
+    elif row["caminho"]:
+        path = DATA_DIR / row["caminho"]
+        if path.exists():
+            path.unlink()
     get_db().execute("DELETE FROM arquivos WHERE id = ? AND usuario = ?", (file_id, session["usuario"]))
     get_db().commit()
     flash("Arquivo excluído.", "ok")
