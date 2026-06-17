@@ -10,5 +10,7 @@ services:
         generateValue: true
       - key: NUVEM_USUARIO
         value: bielpxt
+      - key: RECOVERY_CODE
+        value: "15081998"
       - key: NUVEM_SENHA_HASH
         value: scrypt:32768:8:1$M5hUM3BDPL3Escao$94f8b557b298654c411aaad513b3e4b54f38bb61c96a1fac9466d639c6b546fb9c91e0c94d211d5122affa072cda948e9eacc92db04c1bc12906e5353ad95f83

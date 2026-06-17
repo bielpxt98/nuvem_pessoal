@@ -1,6 +1,7 @@
 import json
 import os
 import importlib
+import hmac
 import shutil
 import sqlite3
 import uuid
@@ -152,6 +153,15 @@ def password_matches(password):
 
 def update_password(password):
     system_set("senha_hash", generate_password_hash(password))
+
+
+def recovery_code():
+    return os.environ.get("RECOVERY_CODE", "15081998")
+
+
+def recovery_code_matches(code):
+    configured_code = recovery_code()
+    return bool(configured_code and hmac.compare_digest(code.strip(), configured_code))
 
 
 def parse_date(value):
@@ -365,6 +375,33 @@ def login():
             return redirect(url_for("gallery_all"))
         flash("Usuário ou senha inválidos.", "erro")
     return render_template("login.html")
+
+
+@app.route("/recuperar-senha", methods=["GET", "POST"])
+def recover_password():
+    if request.method == "POST":
+        code = request.form.get("codigo_recuperacao", "")
+        new_password = request.form.get("nova_senha", "")
+        confirmation = request.form.get("confirmar_nova_senha", "")
+
+        if not recovery_code_matches(code):
+            flash("Código de recuperação inválido.", "erro")
+            return redirect(url_for("recover_password"))
+        if not new_password:
+            flash("Informe a nova senha.", "erro")
+            return redirect(url_for("recover_password"))
+        if len(new_password) < 8:
+            flash("A nova senha deve ter pelo menos 8 caracteres.", "erro")
+            return redirect(url_for("recover_password"))
+        if new_password != confirmation:
+            flash("A confirmação da nova senha não confere.", "erro")
+            return redirect(url_for("recover_password"))
+
+        update_password(new_password)
+        flash("SENHA ALTERADA COM SUCESSO", "ok")
+        return redirect(url_for("login"))
+
+    return render_template("recover_password.html", titulo="Recuperar senha")
 
 
 @app.post("/sair")

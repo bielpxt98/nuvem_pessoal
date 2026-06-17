@@ -17,6 +17,7 @@ Sistema web Flask para guardar fotos e vídeos com login, upload, galeria, filtr
    export SECRET_KEY='uma-chave-secreta-grande'
    export NUVEM_USUARIO='bielpxt'
    export NUVEM_SENHA_HASH='hash-gerado-no-passo-anterior'
+   export RECOVERY_CODE='15081998'
    ```
 4. Opcionalmente configure Cloudinary também no ambiente local:
    ```bash
@@ -42,12 +43,22 @@ Sem as variáveis do Cloudinary, os uploads são salvos em `uploads/` apenas par
 ## Rotas principais
 
 - `/login`
+- `/recuperar-senha`
 - `/todas-as-fotos`
 - `/fotos/hoje`
 - `/fotos/ontem`
 - `/fotos/data/10-06-2026`
 - `/upload`
 - `/pesquisar?data=10/06/2026`
+
+
+## Recuperação de senha do administrador
+
+A tela de login contém o link **ESQUECI MINHA SENHA**, que abre `/recuperar-senha`. Essa página pede o código de recuperação, a nova senha e a confirmação da nova senha.
+
+- Configure o código pela variável de ambiente `RECOVERY_CODE`.
+- A nova senha é salva apenas como hash seguro no banco da aplicação; a senha em texto puro não é armazenada.
+- Se `RECOVERY_CODE` não estiver configurada, a aplicação usa temporariamente o fallback `15081998`. Configure a variável no Render para não depender desse fallback.
 
 ## Backup automático, exportação e importação
 
@@ -120,9 +131,22 @@ Configurações principais do Blueprint:
    SECRET_KEY=uma-chave-secreta-grande
    NUVEM_USUARIO=bielpxt
    NUVEM_SENHA_HASH=hash-gerado-da-senha
+   RECOVERY_CODE=15081998
    ```
 4. Faça o deploy.
-5. Acesse `/upload`, envie uma foto ou vídeo e confirme que a galeria abre a mídia por URL do Cloudinary.
+5. Para alterar ou confirmar o código de recuperação no Render, abra o serviço, vá em **Environment**, adicione ou edite `RECOVERY_CODE` com o valor desejado e clique em **Save Changes**. O Render fará um novo deploy/restart para aplicar a variável.
+6. Acesse `/upload`, envie uma foto ou vídeo e confirme que a galeria abre a mídia por URL do Cloudinary.
+
+### Configurar `RECOVERY_CODE` no Render
+
+No painel do Render:
+
+1. Entre no serviço `nuvem-pessoal`.
+2. Abra **Environment**.
+3. Adicione a variável `RECOVERY_CODE` com o código secreto escolhido.
+4. Salve as alterações e aguarde o redeploy/restart.
+
+Enquanto essa variável não existir no Render, a aplicação aceita temporariamente o fallback `15081998`.
 
 Credenciais iniciais configuradas no Blueprint:
 

@@ -10,6 +10,7 @@
     <label>Usuário<input name="usuario" autocomplete="username" required autofocus></label>
     <label>Senha<input name="senha" type="password" autocomplete="current-password" required></label>
     <button type="submit">Entrar</button>
+    <a class="linkbtn secondary" href="{{ url_for('recover_password') }}">ESQUECI MINHA SENHA</a>
   </form>
 </section>
 {% endblock %}
