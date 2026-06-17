@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% block content %}
+<header class="topbar">
+  <div><p class="eyebrow">CONFIGURAÇÕES</p><h1>Backup da nuvem</h1></div>
+  <div class="top-actions"><a class="secondary linkbtn" href="{{ url_for('gallery_all') }}">Voltar</a><form method="post" action="{{ url_for('logout') }}"><button class="secondary">Sair</button></form></div>
+</header>
+
+<section class="settings-grid">
+  <article class="settings-card">
+    <p class="eyebrow">Último backup realizado</p>
+    <h2>{{ status.ultimo_backup }}</h2>
+    {% if status.arquivo %}<p class="muted">Arquivo: {{ status.arquivo }}</p>{% endif %}
+    <div class="settings-actions">
+      <form method="post" action="{{ url_for('backup_now') }}"><button>FAZER BACKUP AGORA</button></form>
+      <a class="linkbtn" href="{{ url_for('download_backup') }}">BAIXAR BACKUP</a>
+    </div>
+  </article>
+
+  <article class="settings-card">
+    <p class="eyebrow">EXPORTAR NUVEM</p>
+    <p class="muted">Gera um ZIP único com fotos, vídeos, banco de dados e metadados para restaurar em outra instalação.</p>
+    <a class="linkbtn" href="{{ url_for('export_cloud') }}">EXPORTAR NUVEM</a>
+  </article>
+
+  <article class="settings-card">
+    <p class="eyebrow">IMPORTAR NUVEM</p>
+    <p class="muted">Restaura um ZIP exportado. Um backup de segurança da instalação atual é criado antes da importação.</p>
+    <form class="form" method="post" action="{{ url_for('import_cloud') }}" enctype="multipart/form-data" onsubmit="return confirm('Importar este ZIP vai substituir os arquivos e o banco atuais. Continuar?')">
+      <label>Arquivo ZIP<input type="file" name="backup" accept=".zip,application/zip" required></label>
+      <button>IMPORTAR NUVEM</button>
+    </form>
+  </article>
+
+  <article class="settings-card backups-list">
+    <p class="eyebrow">BACKUPS</p>
+    {% if backups %}
+      <ul>
+        {% for backup in backups %}<li>{{ backup.name }}</li>{% endfor %}
+      </ul>
+    {% else %}
+      <p class="empty">Nenhum backup criado ainda.</p>
+    {% endif %}
+  </article>
+</section>
+{% endblock %}
