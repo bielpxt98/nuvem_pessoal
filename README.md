@@ -127,6 +127,6 @@ Configurações principais do Blueprint:
 Credenciais iniciais configuradas no Blueprint:
 
 - Usuário: `bielpxt`
-- Senha: `ui1L7iN4V7o6w4gz`
+- Senha temporária: `Gabriel@2026`
 
 > Recomendação: depois do primeiro acesso, gere uma nova senha, atualize `NUVEM_SENHA_HASH` no Render e faça redeploy.

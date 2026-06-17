@@ -11,4 +11,4 @@ services:
       - key: NUVEM_USUARIO
         value: bielpxt
       - key: NUVEM_SENHA_HASH
-        value: scrypt:32768:8:1$slHm2hYS2TfVP3mA$e5b7640569d156181f41fe228e186dba0a4ab408fbadbdb5c8a1c515f6646cec379c9ea0917cd7e0c205a86616ea5dee11a98fec07d316151669b9f9e5bb9031
+        value: scrypt:32768:8:1$M5hUM3BDPL3Escao$94f8b557b298654c411aaad513b3e4b54f38bb61c96a1fac9466d639c6b546fb9c91e0c94d211d5122affa072cda948e9eacc92db04c1bc12906e5353ad95f83
