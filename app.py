@@ -337,13 +337,15 @@ def index():
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
+    if session.get("usuario"):
+        return redirect(url_for("gallery_all"))
     if request.method == "POST":
         usuario = request.form.get("usuario", "").strip()
         senha = request.form.get("senha", "")
         if usuario == configured_user() and check_password_hash(configured_password_hash(), senha):
             session.clear()
             session["usuario"] = usuario
-            return redirect(request.args.get("next") or url_for("gallery_all"))
+            return redirect(url_for("gallery_all"))
         flash("Usuário ou senha inválidos.", "erro")
     return render_template("login.html")
 

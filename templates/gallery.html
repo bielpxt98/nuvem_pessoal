@@ -17,7 +17,7 @@
   <input name="data" value="{{ data_pesquisa }}" placeholder="Pesquisar data: 10/06/2026 ou 10-06-2026">
   <button>Pesquisar</button>
 </form>
-{% if not grupos %}<p class="empty">Nenhum arquivo encontrado.</p>{% endif %}
+{% if not grupos %}<p class="empty">NENHUMA FOTO OU VÍDEO ENVIADO AINDA</p>{% endif %}
 {% for data, arquivos in grupos.items() %}
   <section class="day"><h2>{{ data }}</h2><div class="grid">
   {% for item in arquivos %}
