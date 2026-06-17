@@ -15,7 +15,7 @@ Sistema web Flask para guardar fotos e vídeos com login, upload, galeria, filtr
 3. Configure variáveis de ambiente:
    ```bash
    export SECRET_KEY='uma-chave-secreta-grande'
-   export NUVEM_USUARIO='admin'
+   export NUVEM_USUARIO='bielpxt'
    export NUVEM_SENHA_HASH='hash-gerado-no-passo-anterior'
    ```
 4. Inicie:
@@ -98,7 +98,7 @@ Configurações principais do Blueprint:
 
 Credenciais iniciais configuradas no Blueprint:
 
-- Usuário: `admin`
+- Usuário: `bielpxt`
 - Senha: `ui1L7iN4V7o6w4gz`
 
 > Recomendação: depois do primeiro acesso, gere uma nova senha, atualize `NUVEM_SENHA_HASH` no Render e faça redeploy.
