@@ -1,0 +1,10 @@
+.env
+*.db
+__pycache__/
+*.py[cod]
+uploads/fotos/*
+uploads/videos/*
+uploads/thumbs/*
+!uploads/fotos/.gitkeep
+!uploads/videos/.gitkeep
+!uploads/thumbs/.gitkeep

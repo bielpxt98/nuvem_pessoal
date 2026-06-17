@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="login-card">
+  <div>
+    <p class="eyebrow">Nuvem privada</p>
+    <h1>NUVEM PESSOAL DE FOTOS E VÍDEOS</h1>
+    <p class="muted">Entre com usuário e senha para acessar seus arquivos de qualquer lugar.</p>
+  </div>
+  <form method="post" class="form">
+    <label>Usuário<input name="usuario" autocomplete="username" required autofocus></label>
+    <label>Senha<input name="senha" type="password" autocomplete="current-password" required></label>
+    <button type="submit">Entrar</button>
+  </form>
+</section>
+{% endblock %}
